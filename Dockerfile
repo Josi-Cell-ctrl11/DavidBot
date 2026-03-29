@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Use an unprivileged user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
