@@ -326,8 +326,8 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => res.send(' WhatsApp Bot JosiHack est EN LIGNE 🟢'));
-app.listen(PORT, () => console.log(`[SERVER] Serveur Web de maintien en vie démarré sur le port ${PORT}`));
+app.get('*', (req, res) => res.status(200).send('WhatsApp Bot JosiHack est EN LIGNE 🟢'));
+app.listen(PORT, '0.0.0.0', () => console.log(`[SERVER] Serveur Web de maintien en vie démarré sur le port ${PORT}`));
 
 // Start the bot with a catch for fatal errors
 connectToWhatsApp().catch(err => console.log("[FATAL ERROR]", err));
