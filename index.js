@@ -87,6 +87,9 @@ async function connectToWhatsApp() {
         maxMsgRetryCount: 5           // Retry jusqu'à 5 fois si un message échoue
     });
 
+    // Exposer le socket globalement pour le handler SIGTERM
+    activeSocket = socket;
+
     // Handle pairing code login flow
     if (config.usePairingCode && !state.creds.me) {
         if (!config.phoneNumber || config.phoneNumber === "1234567890") {
@@ -439,3 +442,34 @@ setInterval(async () => {
         console.log(`[AUTO-PING] Échec du ping interne: ${err.message}`);
     }
 }, 4 * 60 * 1000); // 4 minutes
+
+// --- GESTION PROPRE DU SIGTERM (Render arrête le service) ---
+// Sans ça : Render envoie SIGTERM → Node.js meurt brutalement → session WhatsApp non sauvegardée
+// → au prochain démarrage WhatsApp voit 2 sessions simultanées → code 440 (conflit) → reconnexion
+// Avec ça : on ferme proprement la connexion WA avant de quitter → session propre → pas de conflit
+let activeSocket = null; // Référence globale au socket actif
+
+const originalConnect = connectToWhatsApp;
+// On expose le socket via une variable globale pour le handler SIGTERM
+// (le socket est créé à l'intérieur de connectToWhatsApp, voir la fonction plus haut)
+
+process.on('SIGTERM', async () => {
+    console.log('[SIGTERM] Arrêt demandé par Render. Fermeture propre de la session WhatsApp...');
+    try {
+        if (activeSocket) {
+            await activeSocket.logout(); // Déconnecte proprement sans effacer la session
+        }
+    } catch(e) {
+        // logout() peut échouer si la connexion est déjà fermée, c'est OK
+    }
+    console.log('[SIGTERM] Session fermée proprement. Au revoir.');
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    console.log('[SIGINT] Arrêt manuel. Fermeture propre...');
+    try {
+        if (activeSocket) await activeSocket.logout();
+    } catch(e) {}
+    process.exit(0);
+});

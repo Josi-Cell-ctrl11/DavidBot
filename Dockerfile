@@ -19,4 +19,4 @@ RUN chown -R appuser:appgroup /app
 USER appuser
 
 # Run the bot
-CMD ["npm", "start"]
+CMD ["node", "index.js"]
