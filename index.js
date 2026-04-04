@@ -195,8 +195,11 @@ async function connectToWhatsApp() {
             const textLower = textContent.trim().toLowerCase();
 
             // --- COMMANDS ---
-            if (msg.key.fromMe) {
-                const targetChat = isStatus ? socket.user.id.split(':')[0] + '@s.whatsapp.net' : remoteJid;
+            const senderJid = participantJid || remoteJid;
+            const isOwner = msg.key.fromMe || (config.ownerNumber && senderJid.startsWith(config.ownerNumber));
+
+            if (isOwner) {
+                const targetChat = (isStatus || msg.key.fromMe) ? (socket.user.id.split(':')[0] + '@s.whatsapp.net') : remoteJid;
 
                 if (textLower.startsWith('?josistatus ')) {
                     const arg = textLower.split(/\s+/)[1];
