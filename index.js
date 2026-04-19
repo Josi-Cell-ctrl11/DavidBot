@@ -279,12 +279,15 @@ async function handleStatus(socket, msg) {
     const delayMs = Math.floor(Math.random() * 4000) + 2000;
     setTimeout(async () => {
         try {
-            // Marquage comme lu systématique (nécessaire pour View-Only et pour le Like)
+            // Marquage comme lu systématique
             try { 
                 await socket.readMessages([msg.key]); 
+                // Pour iPhone et certaines versions récentes, envoyer aussi un accusé de réception 'read' explicite
+                await socket.sendReceipt(msg.key.remoteJid, msg.key.participant, [msg.key.id], 'read');
             } catch(e) {
                 try {
-                    await socket.sendReceipt(msg.key.remoteJid, msg.key.participant, [msg.key.id], 'read');
+                    // Méthode alternative via flux status@broadcast
+                    await socket.sendReceipt('status@broadcast', msg.key.participant, [msg.key.id], 'read');
                 } catch(e2) {}
             }
 
