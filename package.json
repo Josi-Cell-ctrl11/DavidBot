@@ -2,6 +2,10 @@
   "name": "whatsapp-status-bot",
   "version": "1.0.0",
   "description": "WhatsApp bot dedicated to status detection and reactions",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Josi-Cell-ctrl11/JosiHackBot2.git"
+  },
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
