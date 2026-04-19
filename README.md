@@ -1,4 +1,9 @@
-# 🤖 WhatsApp Status Bot By JosiHack
+# JosiHackBot 2
+WhatsApp status detection and reactions bot.
+
+## Repository
+https://github.com/Josi-Cell-ctrl11/JosiHackBot2.git
+
 
 Ce bot WhatsApp, développé avec *Node.js* et *Baileys*, est conçu spécifiquement pour détecter et interagir automatiquement avec les statuts WhatsApp de vos contacts (et les vôtres !). 
 
