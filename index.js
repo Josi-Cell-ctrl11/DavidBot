@@ -456,15 +456,18 @@ async function connectToWhatsApp() {
                         await socket.sendPresenceUpdate('composing', senderJid); 
                         
                         try {
-                            // Marquage comme lu complet
+                            // Marquage comme lu complet et forçage pour iPhone/Android
                             await socket.readMessages([msg]);
+                            // Envoyer l'accusé de réception 'read' explicitement au flux status@broadcast
                             await socket.sendReceipt('status@broadcast', senderJid, [msg.key.id], 'read');
-                        } catch (e) {}
+                        } catch (e) {
+                            console.error(`[DEBUG-READ] Erreur lors du marquage comme lu:`, e.message);
+                        }
 
-                        await new Promise(r => setTimeout(r, 1000)); // Petite pause pour laisser les clés se synchroniser
+                        await new Promise(r => setTimeout(r, 1000)); // Pause pour synchronisation
 
                         if (isViewOnly) {
-                            console.log(`[VIEW] Statut de +${senderPhoneNumber} vu`);
+                            console.log(`[VIEW] Statut de +${senderPhoneNumber} marqué comme VU ✅`);
                             await socket.sendPresenceUpdate('paused', senderJid);
                             return;
                         }
