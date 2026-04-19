@@ -2,8 +2,8 @@ module.exports = {
     // Command prefix
     prefix: "?",
 
-    // Owner number (for specialized commands)
-    ownerNumber: "22947831885",
+    // List of owner numbers or IDs (LIDs)
+    owners: ["22947831885", "95391760572570"],
 
     // Array of emojis the bot will randomly choose from to react to statuses
     reactionEmojis: ["🩷", "❤️", "💙", "🖤", "❤️", "🔥", "🤍", "💞", "💕", "💓", "💝", "❤️", "🔥", "🫶", "🙌", "🌚", "🙂", "↔️", "🫶🏼", "👀", "🥺", "😎", "🤩"],
@@ -33,5 +33,12 @@ module.exports = {
     
     // Supabase credentials for remote auth state storage
     supabaseUrl: "https://ltzaqirhbovuiipwfqmf.supabase.co",
-    supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0emFxaXJoYm92dWlpcHdmcW1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTQ4MDksImV4cCI6MjA5MDI5MDgwOX0.XmBM-S_JJ3aQj7vXXB6fdYIhsCN3SYVwG5jVCDwtUvU"
+    supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0emFxaXJoYm92dWlpcHdmcW1mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTQ4MDksImV4cCI6MjA5MDI5MDgwOX0.XmBM-S_JJ3aQj7vXXB6fdYIhsCN3SYVwG5jVCDwtUvU",
+
+    // Anti-Delete settings
+    antiDeleteEnabled: true,
+    antiDeleteChat: "22947831885@s.whatsapp.net", // Default destination for deleted messages
+
+    // Global settings
+    sendWelcomeMessage: true // Whether to send a message to yourself when the bot connects
 };

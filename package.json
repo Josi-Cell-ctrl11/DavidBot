@@ -2,20 +2,21 @@
   "name": "whatsapp-status-bot",
   "version": "1.0.0",
   "description": "WhatsApp bot dedicated to status detection and reactions",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Josi-Cell-ctrl11/JosiHackBot2.git"
-  },
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
     "@supabase/supabase-js": "^2.100.1",
     "@whiskeysockets/baileys": "^6.7.0",
+    "@xaviabot/fb-downloader": "^1.0.14",
+    "axios": "^1.15.0",
+    "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "node-cache": "^5.1.2",
-    "pino": "^9.0.0"
+    "pino": "^9.0.0",
+    "yt-search": "^2.13.1"
   },
   "author": "",
   "license": "ISC"

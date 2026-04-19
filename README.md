@@ -1,9 +1,4 @@
-# JosiHackBot 2
-WhatsApp status detection and reactions bot.
-
-## Repository
-https://github.com/Josi-Cell-ctrl11/JosiHackBot2.git
-
+# 🤖 WhatsApp Status Bot By JosiHack
 
 Ce bot WhatsApp, développé avec *Node.js* et *Baileys*, est conçu spécifiquement pour détecter et interagir automatiquement avec les statuts WhatsApp de vos contacts (et les vôtres !). 
 
@@ -46,16 +41,8 @@ Vous pouvez contrôler le bot en temps réel directement en vous envoyant un mes
 
 | Commande | Explication |
 |----------|-------------|
-| `?josistatus on` | **Bouton ON central.** Active la fonction de réactions. |
-| `?josistatus off` | **Bouton OFF central.** Désactive la fonction de réactions. |
-| `?josiview on/off` | Mode **Vue Seule**. Le bot regarde les statuts sans les liker. |
-| `?josistatusuni` | Fixe un émoji précis (ex: `?josistatusuni 🔥`) ou repasse en `random`. |
-| `?stats` | Affiche les compteurs (Likes, Suppressions, Vues Uniques). |
-| `?host` | Affiche les infos techniques de l'hébergement (CPU, RAM, OS). |
-| `?setprefix` | Change le préfixe des commandes (ex: `?setprefix !`). |
-| `?vv` | (En réponse à une Vue Unique) Récupère le média dans le chat actuel. |
-| `?vv2` | (En réponse à une Vue Unique) Envoie le média dans votre inbox. |
-| `?menu` | Affiche le menu stylisé des commandes. |
+| `?josistatus on` | **Bouton ON central.** Active la fonction de réactions de l'ensemble du bot instantanément. |
+| `?josistatus off` | **Bouton OFF central.** Désactive la fonction de réactions de l'ensemble du bot instantanément. |
 | `?josistatusuni` | **Aide.** Affiche le menu d'aide avec l'état actuel des statuts (activés/désactivés + mode emoji). |
 | `?josistatusuni <emoji>` | Force le bot à utiliser **cet emoji 100% du temps** (exemple : `?josistatusuni ❤️` ou `?josistatusuni 🍉`). Réactive aussi automatiquement les likes globaux. |
 | `?josistatusuni random` | Annule l'emoji spécifique. Le bot recommence à piocher **aléatoirement** dans la grande liste de votre fichier `config.js`. |
