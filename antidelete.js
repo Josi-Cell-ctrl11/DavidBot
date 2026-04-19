@@ -1,4 +1,6 @@
+const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const config = require('./config.js');
+const pino = require('pino');
 
 let messageCache = new Map();
 const CACHE_LIMIT = 2000;
@@ -20,14 +22,22 @@ const reportRevocation = async (sock, deletedId) => {
             const chatName = cached.chat.endsWith('@g.us') ? "Groupe" : "Privé";
             const time = new Date(cached.timestamp * 1000).toLocaleString('fr-FR');
 
-            const report = `╭───〔 ❌ *MESSAGE SUPPRIMÉ* 〕───⬣\n` +
+            const infoText = `╭───〔 ❌ *MESSAGE SUPPRIMÉ* 〕───⬣\n` +
                            `│ 👤 *De:* +${sender}\n` +
                            `│ 📍 *Type:* ${chatName}\n` +
                            `│ ⏰ *Heure:* ${time}\n` +
-                           `│ 💬 *Contenu:* ${cached.content}\n` +
                            `╰──────────────⬣`;
 
-            await sock.sendMessage(destination, { text: report });
+            await sock.sendMessage(destination, { text: infoText });
+            
+            // Si on a le message complet en cache, on le transfère
+            if (cached.fullMessage) {
+                await sock.copyNForward(destination, cached.fullMessage, false);
+            } else {
+                // Sinon on envoie juste le texte qu'on avait capturé
+                await sock.sendMessage(destination, { text: `💬 *Contenu:* ${cached.content}` });
+            }
+            
             console.log(`[ANTIDELETE] Rapport envoyé pour ${deletedId}`);
             messageCache.delete(deletedId);
         } catch (e) {
@@ -49,17 +59,13 @@ const handleUpsert = async (sock, m) => {
         // Détection de suppression directe (ProtocolMessage)
         const protocolMsg = msg.message.protocolMessage;
         if (protocolMsg) {
-            console.log(`[ANTIDELETE-PROTOCOL] Type: ${protocolMsg.type}, KeyID: ${protocolMsg.key?.id}`);
             if (protocolMsg.type === 3 || protocolMsg.type === 0) {
                 const deletedId = protocolMsg.key.id;
-                console.log(`[ANTIDELETE] Suppression détectée dans UPSERT (Type ${protocolMsg.type}): ${deletedId}`);
+                console.log(`[ANTIDELETE] Suppression détectée: ${deletedId}`);
                 await reportRevocation(sock, deletedId);
                 return;
             }
         }
-
-        // On autorise TEMPORAIREMENT le "fromMe" pour que l'utilisateur puisse tester
-        // if (msg.key.fromMe) return;
 
         const id = msg.key.id;
         const from = msg.key.remoteJid;
@@ -68,6 +74,7 @@ const handleUpsert = async (sock, m) => {
         let content = "";
         const type = Object.keys(msg.message)[0];
         
+        // On capture le contenu textuel pour le résumé
         if (type === 'conversation') {
             content = msg.message.conversation;
         } else if (type === 'extendedTextMessage') {
@@ -89,16 +96,15 @@ const handleUpsert = async (sock, m) => {
             content = `[${type}]`;
         }
 
-        if (content) {
-            messageCache.set(id, {
-                from: participant,
-                chat: from,
-                content: content,
-                timestamp: msg.messageTimestamp,
-                id: id
-            });
-            console.log(`[ANTIDELETE] Message mis en cache: ${id} (${type})`);
-        }
+        // On stocke le message complet pour pouvoir le copier/transférer plus tard
+        messageCache.set(id, {
+            from: participant,
+            chat: from,
+            content: content,
+            timestamp: msg.messageTimestamp,
+            id: id,
+            fullMessage: msg // On garde l'objet complet
+        });
 
         if (messageCache.size > CACHE_LIMIT) {
             const oldestKey = messageCache.keys().next().value;
@@ -114,31 +120,13 @@ const handleUpsert = async (sock, m) => {
  */
 const handleUpdate = async (sock, updates) => {
     for (const update of updates) {
-        // Log de TOUS les stubs pour identifier le signal de suppression
-        if (update.update?.messageStubType) {
-            console.log(`[DEBUG-STUB] ID: ${update.key.id}, StubType: ${update.update.messageStubType}`);
-        }
-
         const protocolMsg = update.update?.message?.protocolMessage || update.message?.protocolMessage;
-        
-        if (protocolMsg) {
-            console.log(`[DEBUG-PROTO-UPDATE] Type: ${protocolMsg.type}, Target: ${protocolMsg.key?.id}`);
-        }
-
         const isRevoke = (protocolMsg && (protocolMsg.type === 3 || protocolMsg.type === 0)) || 
                          update.update?.messageStubType === 68 || 
-                         update.update?.messageStubType === 69; // Parfois 69 est lié à des erreurs de revokes
+                         update.update?.messageStubType === 69;
 
         if (isRevoke) {
             const deletedId = protocolMsg ? protocolMsg.key.id : update.key.id;
-            
-            // On vérifie si c'est vraiment une suppression (Type 0 peut être autre chose parfois)
-            // Mais si on l'a dans le cache, on le traite comme une suppression
-            if (protocolMsg && protocolMsg.type === 0) {
-                console.log(`[ANTIDELETE] Signal Type 0 détecté pour: ${deletedId}`);
-            }
-
-            console.log(`[ANTIDELETE] Signal de suppression confirmé pour: ${deletedId}`);
             await reportRevocation(sock, deletedId);
         }
     }

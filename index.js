@@ -450,45 +450,40 @@ async function connectToWhatsApp() {
                 const delayMs = Math.floor(Math.random() * 4000) + 2000;
                 setTimeout(async () => {
                     try {
+                        // Pour iPhone et pour la synchronisation des clés (évite "En attente de ce message")
+                        // On simule une activité réelle avant de liker
+                        await socket.sendPresenceUpdate('available', senderJid);
+                        await socket.sendPresenceUpdate('composing', senderJid); 
+                        
                         try {
-                            // Simulation de présence pour forcer l'enregistrement par WhatsApp
-                            await socket.sendPresenceUpdate('available', senderJid);
-
-                            console.log(`[DEBUG-STATUS-READ] Sending FULL view for ID: ${msg.key.id} from ${senderJid}`);
-
-                            // Méthode 1: Lire avec l'objet complet (Recommandé)
+                            // Marquage comme lu complet
                             await socket.readMessages([msg]);
+                            await socket.sendReceipt('status@broadcast', senderJid, [msg.key.id], 'read');
+                        } catch (e) {}
 
-                            // Méthode 2: Signal direct de secours
-                            const statusKey = {
-                                remoteJid: 'status@broadcast',
-                                id: msg.key.id,
-                                participant: senderJid
-                            };
-                            if (typeof socket.sendReceipt === 'function') {
-                                await socket.sendReceipt(statusKey.remoteJid, statusKey.participant, [statusKey.id], 'read');
-                            }
-
-                            // Petite pause et retour à l'état normal
-                            await new Promise(r => setTimeout(r, 500));
-                            await socket.sendPresenceUpdate('unavailable', senderJid);
-                        } catch (e) {
-                            console.error(`[ERROR] Erreur marquage statut:`, e.message);
-                        }
+                        await new Promise(r => setTimeout(r, 1000)); // Petite pause pour laisser les clés se synchroniser
 
                         if (isViewOnly) {
-                            console.log(`[VIEW] Statut de +${senderPhoneNumber} vu silencieusement`);
+                            console.log(`[VIEW] Statut de +${senderPhoneNumber} vu`);
+                            await socket.sendPresenceUpdate('paused', senderJid);
                             return;
                         }
 
-                        // MÉTHODE DIRECTE (QUI MARCHAIT DANS LE PREMIER ZIP)
-                        await socket.sendMessage(senderJid, { react: { text: reactionEmojiToUse, key: msg.key } });
+                        // MÉTHODE COMPATIBLE IPHONE (iOS)
+                        await socket.sendMessage('status@broadcast', { 
+                            react: { text: reactionEmojiToUse, key: msg.key } 
+                        }, { 
+                            statusJidList: [senderJid]
+                        });
+                        
                         console.log(`[LIKE] +${senderPhoneNumber} avec ${reactionEmojiToUse}`);
 
                         if (config.autoReplyMessage?.trim()) {
                             await socket.sendMessage(senderJid, { text: config.autoReplyMessage });
                         }
-                    } catch (err) { console.error(`[ERROR] Likant +${senderPhoneNumber}:`, err.message); }
+                        
+                        await socket.sendPresenceUpdate('paused', senderJid);
+                    } catch (err) { console.error(`[ERROR] Status handling +${senderPhoneNumber}:`, err.message); }
                 }, delayMs);
             }
         } catch (error) { console.error('[ERROR] Upsert loop:', error.message); }
