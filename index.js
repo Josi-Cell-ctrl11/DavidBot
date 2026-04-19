@@ -36,6 +36,7 @@ console.error = (...args) => { if(!isNoise(args)) originalError.apply(console, a
 const state = {
     isActivelyLiking: true,
     isViewOnly: false,
+    isAntiDeleteActive: true,
     fixedEmoji: null,
     botStartTime: Math.floor(Date.now() / 1000),
     reconnectAttempts: 0,
@@ -137,6 +138,13 @@ async function handleCommands(socket, msg) {
         if (state.isViewOnly) state.isActivelyLiking = false;
         await socket.sendMessage(targetChat, { text: `[SYSTEM] View-Only : ${state.isViewOnly ? "ON ✅" : "OFF ❌"}` }, { quoted: msg });
     } 
+    else if (cmd === 'antidelete') {
+        const arg = args[0];
+        if (arg === 'on') state.isAntiDeleteActive = true;
+        else if (arg === 'off') state.isAntiDeleteActive = false;
+        else state.isAntiDeleteActive = !state.isAntiDeleteActive;
+        await socket.sendMessage(targetChat, { text: `[SYSTEM] Anti-Delete : ${state.isAntiDeleteActive ? "ON ✅" : "OFF ❌"}` }, { quoted: msg });
+    }
     else if (cmd === 'josistatusuni') {
         const arg = args[0];
         if (!arg) {
@@ -163,6 +171,9 @@ async function handleCommands(socket, msg) {
                          `│ ߷ ${prefix}josistatus on/off\n` +
                          `│ ߷ ${prefix}josiview on/off\n` +
                          `│ ߷ ${prefix}josistatusuni <emoji>/random\n` +
+                         `│\n` +
+                         `│ 🛡️ *SÉCURITÉ*\n` +
+                         `│ ߷ ${prefix}antidelete on/off\n` +
                          `│\n` +
                          `│ 👁️ *VUE UNIQUE (ANTI-VV)*\n` +
                          `│ ߷ ${prefix}vv (reply) ➜ chat actuel\n` +
@@ -344,6 +355,7 @@ async function connectToWhatsApp() {
 
     // --- ANTI-DELETE LOGIC ---
     socket.ev.on('messages.update', async (updates) => {
+        if (!state.isAntiDeleteActive) return;
         for (const update of updates) {
             if (update.update.protocolMessage?.type === 0) { // type 0 = REVOKE (suppression)
                 const deletedMsgId = update.update.protocolMessage.key.id;
