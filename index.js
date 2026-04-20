@@ -116,14 +116,8 @@ async function connectToWhatsApp() {
 
     socket.ev.on('creds.update', saveCreds);
 
-    socket.ev.on('messages.upsert', (m) => antiDelete.handleUpsert(socket, m));
+    // --- ANTI-DELETE LOGIC ---
     socket.ev.on('messages.update', (update) => {
-        // Log de debug pour voir tous les updates qui arrivent
-        update.forEach(u => {
-            if (u.update.messageStubType || u.update.message?.protocolMessage) {
-                console.log(`[DEBUG-UPDATE] ID: ${u.key.id}, Stub: ${u.update.messageStubType}, Protocol: ${!!u.update.message?.protocolMessage}`);
-            }
-        });
         antiDelete.handleUpdate(socket, update);
     });
 
@@ -173,6 +167,9 @@ async function connectToWhatsApp() {
 
     socket.ev.on('messages.upsert', async (m) => {
         try {
+            // Capturer les messages pour l'Anti-Delete AVANT tout traitement
+            await antiDelete.handleUpsert(socket, m);
+
             const msg = m.messages[0];
             if (!msg || !msg.message) return;
 
