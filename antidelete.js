@@ -1,23 +1,21 @@
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
+const { downloadMediaMessage, generateForwardMessageContent, generateWAMessageFromContent } = require('@whiskeysockets/baileys');
 const config = require('./config.js');
 const pino = require('pino');
 
 let messageCache = new Map();
-const CACHE_LIMIT = 2000;
+const CACHE_LIMIT = 5000;
 
 /**
  * Fonction interne pour signaler une suppression.
  */
 const reportRevocation = async (sock, deletedId) => {
-    if (!config.antiDeleteEnabled) {
-        console.log(`[ANTIDELETE] Suppression ignorée (ID: ${deletedId}) car l'option est sur OFF.`);
-        return;
-    }
+    if (!config.antiDeleteEnabled) return;
 
     const cached = messageCache.get(deletedId);
     if (cached) {
         try {
-            const destination = config.antiDeleteChat || (sock.user.id.split(':')[0] + '@s.whatsapp.net');
+            const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+            const destination = config.antiDeleteChat || botJid;
             const sender = cached.from.split('@')[0];
             const chatName = cached.chat.endsWith('@g.us') ? "Groupe" : "Privé";
             const time = new Date(cached.timestamp * 1000).toLocaleString('fr-FR');
@@ -30,21 +28,27 @@ const reportRevocation = async (sock, deletedId) => {
 
             await sock.sendMessage(destination, { text: infoText });
             
-            // Si on a le message complet en cache, on le transfère
             if (cached.fullMessage) {
-                await sock.copyNForward(destination, cached.fullMessage, false);
-            } else {
-                // Sinon on envoie juste le texte qu'on avait capturé
-                await sock.sendMessage(destination, { text: `💬 *Contenu:* ${cached.content}` });
+                // Utilisation d'une méthode de transfert plus robuste
+                const forwardContent = generateForwardMessageContent(cached.fullMessage, false);
+                const contentType = Object.keys(forwardContent)[0];
+                
+                if (contentType) {
+                    const finalMsg = generateWAMessageFromContent(destination, forwardContent, { 
+                        userJid: botJid,
+                        quoted: cached.fullMessage 
+                    });
+                    await sock.relayMessage(destination, finalMsg.message, { messageId: finalMsg.key.id });
+                } else {
+                    await sock.sendMessage(destination, { text: `💬 *Contenu:* ${cached.content}` });
+                }
             }
             
             console.log(`[ANTIDELETE] Rapport envoyé pour ${deletedId}`);
-            messageCache.delete(deletedId);
+            // On ne supprime pas du cache immédiatement pour gérer les doublons d'events
         } catch (e) {
             console.error("[ANTIDELETE] Send error:", e);
         }
-    } else {
-        console.log(`[ANTIDELETE] Message ${deletedId} supprimé mais absent du cache.`);
     }
 };
 

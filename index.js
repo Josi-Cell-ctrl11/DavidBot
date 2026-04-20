@@ -4,7 +4,10 @@ const {
     DisconnectReason,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
-    downloadMediaMessage
+    downloadMediaMessage,
+    generateForwardMessageContent,
+    prepareWAMessageMedia,
+    generateWAMessageFromContent
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const config = require('./config.js');
