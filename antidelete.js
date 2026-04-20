@@ -17,14 +17,17 @@ const reportRevocation = async (sock, deletedId) => {
             const botJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
             const destination = config.antiDeleteChat || botJid;
             const sender = cached.from.split('@')[0];
-            const chatName = cached.chat.endsWith('@g.us') ? "Groupe" : "Privé";
+            const senderName = cached.pushName || sender;
+            const chatName = cached.chat.endsWith('@g.us') ? "Groupe" : (cached.chat === 'status@broadcast' ? "Statut" : "Privé");
             const time = new Date(cached.timestamp * 1000).toLocaleString('fr-FR');
 
-            const infoText = `╭───〔 ❌ *MESSAGE SUPPRIMÉ* 〕───⬣\n` +
-                           `│ 👤 *De:* +${sender}\n` +
-                           `│ 📍 *Type:* ${chatName}\n` +
-                           `│ ⏰ *Heure:* ${time}\n` +
-                           `╰──────────────⬣`;
+            const infoText = `━━━━❪ ❌ *MESSAGE SUPPRIMÉ* ❫━━━━\n` +
+                           `📸 *Type:* ${chatName} supprimé\n` +
+                           `👤 *Auteur:* ${senderName} (+${sender})\n` +
+                           `📍 *Source:* ${chatName === 'Statut' ? 'Statut de ' + senderName : chatName} (+${sender})\n` +
+                           `⏰ *Heure:* ${time}\n` +
+                           `💬 *Contenu:* ${cached.content}\n` +
+                           `━━━━━━━━━━━━━━━━━━━━`;
 
             await sock.sendMessage(destination, { text: infoText });
             
@@ -103,6 +106,7 @@ const handleUpsert = async (sock, m) => {
         // On stocke le message complet pour pouvoir le copier/transférer plus tard
         messageCache.set(id, {
             from: participant,
+            pushName: msg.pushName || "",
             chat: from,
             content: content,
             timestamp: msg.messageTimestamp,

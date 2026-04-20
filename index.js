@@ -50,7 +50,7 @@ const msgRetryCounterCache = new NodeCache();
 // --- STATE & CACHE ---
 const reactedStatusCache = new Set();
 const CACHE_MAX_SIZE = 1000;
-const botStartTime = Math.floor(Date.now() / 1000);
+let botStartTime = Math.floor(Date.now() / 1000);
 
 let isActivelyLiking = true;
 let fixedEmoji = "🤍";
@@ -152,6 +152,7 @@ async function connectToWhatsApp() {
             }
         } else if (connection === 'open') {
             reconnectAttempts = 0;
+            botStartTime = Math.floor(Date.now() / 1000); // Réinitialiser pour ignorer le backlog
             console.log('[INFO] Successfully connected to WhatsApp!');
             const botJid = socket.user.id.split(':')[0] + '@s.whatsapp.net';
             const welcomeMsg = `╭───〔 🤖 *JOSIHACK BOT* 〕───⬣\n` +
