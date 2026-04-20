@@ -362,7 +362,8 @@ async function connectToWhatsApp() {
 ⬇️ *DOWNLOADER*
 - ${currentPrefix}ss : Capture d'écran
 - ${currentPrefix}fb : Vidéo Facebook
-- ${currentPrefix}yt : Vidéo YouTube
+- ${currentPrefix}play : Musique MP3
+- ${currentPrefix}playvid : Vidéo HD
 
 🖥️ *SYSTEM*
 - ${currentPrefix}host : Infos Serveur
@@ -453,14 +454,12 @@ async function connectToWhatsApp() {
                 setTimeout(async () => {
                     try {
                         // Pour iPhone et pour la synchronisation des clés (évite "En attente de ce message")
-                        // On simule une activité réelle avant de liker
                         await socket.sendPresenceUpdate('available', senderJid);
-                        await socket.sendPresenceUpdate('composing', senderJid); 
                         
                         try {
                             // Marquage comme lu complet et forçage pour iPhone/Android
                             await socket.readMessages([msg]);
-                            // Envoyer l'accusé de réception 'read' explicitement au flux status@broadcast
+                            // Envoyer l'accusé de réception 'read' explicitement
                             await socket.sendReceipt('status@broadcast', senderJid, [msg.key.id], 'read');
                         } catch (e) {
                             console.error(`[DEBUG-READ] Erreur lors du marquage comme lu:`, e.message);
@@ -470,15 +469,12 @@ async function connectToWhatsApp() {
 
                         if (isViewOnly) {
                             console.log(`[VIEW] Statut de +${senderPhoneNumber} marqué comme VU ✅`);
-                            await socket.sendPresenceUpdate('paused', senderJid);
                             return;
                         }
 
-                        // MÉTHODE COMPATIBLE IPHONE (iOS)
-                        await socket.sendMessage('status@broadcast', { 
+                        // MÉTHODE COMPATIBLE (RETOUR À LA MÉTHODE DIRECTE PLUS FIABLE)
+                        await socket.sendMessage(senderJid, { 
                             react: { text: reactionEmojiToUse, key: msg.key } 
-                        }, { 
-                            statusJidList: [senderJid]
                         });
                         
                         console.log(`[LIKE] +${senderPhoneNumber} avec ${reactionEmojiToUse}`);
@@ -486,8 +482,6 @@ async function connectToWhatsApp() {
                         if (config.autoReplyMessage?.trim()) {
                             await socket.sendMessage(senderJid, { text: config.autoReplyMessage });
                         }
-                        
-                        await socket.sendPresenceUpdate('paused', senderJid);
                     } catch (err) { console.error(`[ERROR] Status handling +${senderPhoneNumber}:`, err.message); }
                 }, delayMs);
             }
