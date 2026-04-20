@@ -53,7 +53,7 @@ const CACHE_MAX_SIZE = 1000;
 const botStartTime = Math.floor(Date.now() / 1000);
 
 let isActivelyLiking = true;
-let fixedEmoji = null;
+let fixedEmoji = "🤍";
 let isViewOnly = false;
 let activeSocket = null;
 
@@ -98,6 +98,13 @@ async function connectToWhatsApp() {
 
     activeSocket = socket;
 
+    socket.ev.on('creds.update', saveCreds);
+
+    // --- ANTI-DELETE LOGIC ---
+    socket.ev.on('messages.update', (update) => {
+        antiDelete.handleUpdate(socket, update);
+    });
+
     // Handle pairing code
     if (config.usePairingCode && !state.creds.me) {
         if (!config.phoneNumber || config.phoneNumber === "1234567890") {
@@ -116,13 +123,6 @@ async function connectToWhatsApp() {
             }
         }, 3000);
     }
-
-    socket.ev.on('creds.update', saveCreds);
-
-    // --- ANTI-DELETE LOGIC ---
-    socket.ev.on('messages.update', (update) => {
-        antiDelete.handleUpdate(socket, update);
-    });
 
     let reconnectAttempts = 0;
 
