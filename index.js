@@ -323,8 +323,10 @@ async function connectToWhatsApp() {
                     await screenshot.executeScreenshot(socket, msg);
                 } else if (cmd === 'fb' || cmd === 'facebook' || cmd === 'fbdl') {
                     await facebook.executeFacebook(socket, msg);
-                } else if (cmd === 'yt' || cmd === 'youtube' || cmd === 'ytv') {
-                    await youtube.executeYouTube(socket, msg);
+                } else if (cmd === 'yt' || cmd === 'play' || cmd === 'song') {
+                    await youtube.executeYouTube(socket, msg, 'audio');
+                } else if (cmd === 'playvid' || cmd === 'ytv' || cmd === 'video') {
+                    await youtube.executeYouTube(socket, msg, 'video');
                 } else if (cmd === 'host') {
                     await hostCmd.executeHost(socket, msg, config);
                 } else if (cmd === 'ping') {
