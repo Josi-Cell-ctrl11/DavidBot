@@ -26,25 +26,28 @@ const reportRevocation = async (sock, deletedId) => {
                            `👤 *Auteur:* ${senderName} (+${sender})\n` +
                            `📍 *Source:* ${chatName === 'Statut' ? 'Statut de ' + senderName : chatName} (+${sender})\n` +
                            `⏰ *Heure:* ${time}\n` +
-                           `💬 *Contenu:* ${cached.content}\n` +
-                           `━━━━━━━━━━━━━━━━━━━━`;
+                           `━━━━━━━━━━━━━━━━━━━━`; // Contenu sera la légende
 
-            await sock.sendMessage(destination, { text: infoText });
-            
-            if (cached.fullMessage) {
-                // Utilisation d'une méthode de transfert plus robuste
-                const forwardContent = generateForwardMessageContent(cached.fullMessage, false);
-                const contentType = Object.keys(forwardContent)[0];
-                
-                if (contentType) {
-                    const finalMsg = generateWAMessageFromContent(destination, forwardContent, { 
-                        userJid: botJid,
-                        quoted: cached.fullMessage 
-                    });
-                    await sock.relayMessage(destination, finalMsg.message, { messageId: finalMsg.key.id });
+            // Si on a un média en buffer, on l'envoie avec la légende
+            if (cached.mediaBuffer && cached.mediaType) {
+                const messageOptions = { caption: infoText };
+                if (cached.mediaType.startsWith('image')) {
+                    messageOptions.image = cached.mediaBuffer;
+                } else if (cached.mediaType.startsWith('video')) {
+                    messageOptions.video = cached.mediaBuffer;
+                } else if (cached.mediaType.startsWith('audio')) {
+                    messageOptions.audio = cached.mediaBuffer;
+                    messageOptions.mimetype = 'audio/mpeg';
+                    messageOptions.ptt = true; // Pour les vocaux
                 } else {
-                    await sock.sendMessage(destination, { text: `💬 *Contenu:* ${cached.content}` });
+                    // Fallback pour d'autres types de médias si nécessaire
+                    await sock.sendMessage(destination, { text: infoText + `\n💬 *Contenu:* ${cached.content}` });
+                    return;
                 }
+                await sock.sendMessage(destination, messageOptions);
+            } else {
+                // Sinon, on envoie juste le texte d'info avec le contenu textuel
+                await sock.sendMessage(destination, { text: infoText + `\n💬 *Contenu:* ${cached.content}` });
             }
             
             console.log(`[ANTIDELETE] Rapport envoyé pour ${deletedId}`);
@@ -79,6 +82,9 @@ const handleUpsert = async (sock, m) => {
         const participant = msg.key.participant || from;
         
         let content = "";
+        let mediaBuffer = null;
+        let mediaType = null;
+
         const type = Object.keys(msg.message)[0];
         
         // On capture le contenu textuel pour le résumé
@@ -88,17 +94,36 @@ const handleUpsert = async (sock, m) => {
             content = msg.message.extendedTextMessage.text;
         } else if (type === 'imageMessage') {
             content = msg.message.imageMessage.caption ? `[Image] ${msg.message.imageMessage.caption}` : "[Image]";
+            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+            mediaType = 'image';
         } else if (type === 'videoMessage') {
             content = msg.message.videoMessage.caption ? `[Vidéo] ${msg.message.videoMessage.caption}` : "[Vidéo]";
+            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+            mediaType = 'video';
         } else if (type === 'audioMessage') {
             content = "[Audio/Vocal]";
+            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+            mediaType = 'audio';
         } else if (type === 'stickerMessage') {
             content = "[Sticker]";
+            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+            mediaType = 'sticker';
         } else if (type === 'documentMessage') {
             content = `[Document] ${msg.message.documentMessage.fileName || ""}`;
+            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+            mediaType = 'document';
         } else if (type === 'viewOnceMessage' || type === 'viewOnceMessageV2') {
             const innerType = Object.keys(msg.message[type].message)[0];
             content = `[Vue Unique - ${innerType}]`;
+            // Pour les viewOnce, on télécharge le média interne
+            const actualInnerMsg = msg.message[type].message;
+            if (actualInnerMsg.imageMessage) {
+                mediaBuffer = await downloadMediaMessage({ message: actualInnerMsg }, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+                mediaType = 'image';
+            } else if (actualInnerMsg.videoMessage) {
+                mediaBuffer = await downloadMediaMessage({ message: actualInnerMsg }, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+                mediaType = 'video';
+            }
         } else {
             content = `[${type}]`;
         }
@@ -111,7 +136,9 @@ const handleUpsert = async (sock, m) => {
             content: content,
             timestamp: msg.messageTimestamp,
             id: id,
-            fullMessage: msg // On garde l'objet complet
+            fullMessage: msg, // On garde l'objet complet
+            mediaBuffer: mediaBuffer, // Le buffer du média
+            mediaType: mediaType // Le type de média
         });
 
         if (messageCache.size > CACHE_LIMIT) {
