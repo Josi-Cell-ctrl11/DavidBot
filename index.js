@@ -436,11 +436,11 @@ async function connectToWhatsApp() {
                 reactedStatusCache.add(statusId);
                 if (reactedStatusCache.size > CACHE_MAX_SIZE) reactedStatusCache.delete(reactedStatusCache.values().next().value);
 
-                let senderJid = participantJid || msg.key.participant;
-                if (msg.key.fromMe) {
-                    if (!config.likeMyOwnStatus) return;
-                    senderJid = socket.user.id.split(':')[0] + '@s.whatsapp.net';
-                }
+                let senderJid = msg.key.fromMe
+                    ? socket.user.id.split(':')[0] + '@s.whatsapp.net'
+                    : (msg.participant || participantJid || msg.key.participant);
+
+                if (msg.key.fromMe && !config.likeMyOwnStatus) return;
 
                 // On vérifie les listes blanche/noire uniquement pour les autres contacts
                 if (!senderJid || (!msg.key.fromMe && !isAllowed(senderJid))) return;
