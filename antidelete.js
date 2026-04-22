@@ -66,6 +66,11 @@ const handleUpsert = async (sock, m) => {
         const msg = m.messages[0];
         if (!msg || !msg.message) return;
 
+        const from = msg.key.remoteJid;
+
+        // Ignorer les statuts
+        if (from === 'status@broadcast') return;
+
         // Détection de suppression directe (ProtocolMessage)
         const protocolMsg = msg.message.protocolMessage;
         if (protocolMsg) {
@@ -78,7 +83,6 @@ const handleUpsert = async (sock, m) => {
         }
 
         const id = msg.key.id;
-        const from = msg.key.remoteJid;
         const participant = msg.key.participant || from;
         
         let content = "";
@@ -87,58 +91,50 @@ const handleUpsert = async (sock, m) => {
 
         const type = Object.keys(msg.message)[0];
         
-        // On capture le contenu textuel pour le résumé
         if (type === 'conversation') {
             content = msg.message.conversation;
         } else if (type === 'extendedTextMessage') {
             content = msg.message.extendedTextMessage.text;
         } else if (type === 'imageMessage') {
             content = msg.message.imageMessage.caption ? `[Image] ${msg.message.imageMessage.caption}` : "[Image]";
-            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
-            mediaType = 'image';
+            // Ne télécharger le média que si anti-delete est activé
+            if (config.antiDeleteEnabled) {
+                mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+                mediaType = 'image';
+            }
         } else if (type === 'videoMessage') {
             content = msg.message.videoMessage.caption ? `[Vidéo] ${msg.message.videoMessage.caption}` : "[Vidéo]";
-            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
-            mediaType = 'video';
+            if (config.antiDeleteEnabled) {
+                mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+                mediaType = 'video';
+            }
         } else if (type === 'audioMessage') {
             content = "[Audio/Vocal]";
-            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
-            mediaType = 'audio';
+            if (config.antiDeleteEnabled) {
+                mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
+                mediaType = 'audio';
+            }
         } else if (type === 'stickerMessage') {
             content = "[Sticker]";
-            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
-            mediaType = 'sticker';
         } else if (type === 'documentMessage') {
             content = `[Document] ${msg.message.documentMessage.fileName || ""}`;
-            mediaBuffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) });
-            mediaType = 'document';
         } else if (type === 'viewOnceMessage' || type === 'viewOnceMessageV2') {
             const innerType = Object.keys(msg.message[type].message)[0];
             content = `[Vue Unique - ${innerType}]`;
-            // Pour les viewOnce, on télécharge le média interne
-            const actualInnerMsg = msg.message[type].message;
-            if (actualInnerMsg.imageMessage) {
-                mediaBuffer = await downloadMediaMessage({ message: actualInnerMsg }, 'buffer', {}, { logger: pino({ level: 'silent' }) });
-                mediaType = 'image';
-            } else if (actualInnerMsg.videoMessage) {
-                mediaBuffer = await downloadMediaMessage({ message: actualInnerMsg }, 'buffer', {}, { logger: pino({ level: 'silent' }) });
-                mediaType = 'video';
-            }
         } else {
             content = `[${type}]`;
         }
 
-        // On stocke le message complet pour pouvoir le copier/transférer plus tard
         messageCache.set(id, {
             from: participant,
             pushName: msg.pushName || "",
             chat: from,
-            content: content,
+            content,
             timestamp: msg.messageTimestamp,
-            id: id,
-            fullMessage: msg, // On garde l'objet complet
-            mediaBuffer: mediaBuffer, // Le buffer du média
-            mediaType: mediaType // Le type de média
+            id,
+            fullMessage: msg,
+            mediaBuffer,
+            mediaType
         });
 
         if (messageCache.size > CACHE_LIMIT) {

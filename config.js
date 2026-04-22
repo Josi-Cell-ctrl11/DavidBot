@@ -36,7 +36,7 @@ module.exports = {
     supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFicWtkYWZ1dm1yb2dyeHplbWdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4NjQ2MTcsImV4cCI6MjA5MjQ0MDYxN30._52KajhYdg5yv17wvp7FPtnheOiqlgN4EFRTAgb7KVw",
 
     // Anti-Delete settings
-    antiDeleteEnabled: true,
+    antiDeleteEnabled: false,
     antiDeleteChat: "22994403513@s.whatsapp.net", // Default destination for deleted messages
 
     // Global settings

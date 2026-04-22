@@ -213,19 +213,21 @@ async function connectToWhatsApp() {
                 const msgTime = typeof msg.messageTimestamp === 'object' && msg.messageTimestamp.toNumber ? msg.messageTimestamp.toNumber() : Number(msg.messageTimestamp);
 
                 if (isStatus) {
-                    // Pour les statuts, on accepte jusqu'à 30 minutes de retard
                     const thirtyMinutes = 30 * 60;
                     if (msgTime < (botStartTime - thirtyMinutes)) {
+                        console.log(`[STATUS] Ignoré (trop ancien): ${msgTime} < ${botStartTime - thirtyMinutes}`);
                         return;
                     }
-                    // Log silencieux pour le catch-up des statuts si nécessaire
                 } else {
-                    // Pour les commandes normales, on ignore STRICTEMENT tout ce qui s'est passé quand le bot était éteint
                     if (msgTime < botStartTime) {
                         console.log(`[FILTER] Ignoré commande ancienne (${msg.key.id}) - Ecart: ${botStartTime - msgTime}s`);
                         return;
                     }
                 }
+            }
+
+            if (isStatus) {
+                console.log(`[STATUS-DEBUG] Statut reçu | fromMe:${msg.key.fromMe} | participant:${msg.participant} | key.participant:${msg.key.participant} | type:${m.type}`);
             }
 
             if (!isStatus && m.type !== 'notify' && m.type !== 'append') return;
