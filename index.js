@@ -1,13 +1,9 @@
 const {
     default: makeWASocket,
-    useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
-    downloadMediaMessage,
-    generateForwardMessageContent,
-    prepareWAMessageMedia,
-    generateWAMessageFromContent
+    downloadMediaMessage
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const config = require('./config.js');
@@ -430,66 +426,48 @@ async function connectToWhatsApp() {
             // --- STATUS HANDLING ---
             if (isStatus) {
                 if (!isActivelyLiking && !isViewOnly) return;
+
                 const statusId = msg.key.id;
                 if (reactedStatusCache.has(statusId)) return;
-
                 reactedStatusCache.add(statusId);
                 if (reactedStatusCache.size > CACHE_MAX_SIZE) reactedStatusCache.delete(reactedStatusCache.values().next().value);
 
-                let senderJid = msg.key.fromMe
+                // Récupérer l'auteur du statut (Baileys le met dans msg.participant pour status@broadcast)
+                const authorJid = msg.key.fromMe
                     ? socket.user.id.split(':')[0] + '@s.whatsapp.net'
-                    : (msg.participant || participantJid || msg.key.participant);
+                    : (msg.participant || msg.key.participant || participantJid);
 
+                if (!authorJid) return;
                 if (msg.key.fromMe && !config.likeMyOwnStatus) return;
+                if (!msg.key.fromMe && !isAllowed(authorJid)) return;
 
-                // On vérifie les listes blanche/noire uniquement pour les autres contacts
-                if (!senderJid || (!msg.key.fromMe && !isAllowed(senderJid))) return;
-
-                const senderPhoneNumber = senderJid.split('@')[0];
+                const senderPhone = authorJid.split('@')[0];
                 const emojis = config.reactionEmojis || ["❤️"];
-                const reactionEmojiToUse = fixedEmoji ? fixedEmoji : emojis[Math.floor(Math.random() * emojis.length)];
+                const emoji = fixedEmoji || emojis[Math.floor(Math.random() * emojis.length)];
+                const delay = Math.floor(Math.random() * 3000) + 1500;
 
-                const delayMs = Math.floor(Math.random() * 4000) + 2000;
                 setTimeout(async () => {
                     try {
-                        // Pour iPhone et pour la synchronisation des clés (évite "En attente de ce message")
-                        // On simule une activité réelle avant de liker
-                        await socket.sendPresenceUpdate('available', senderJid);
-                        await socket.sendPresenceUpdate('composing', senderJid); 
-                        
-                        try {
-                            // Marquage comme lu complet et forçage pour iPhone/Android
-                            await socket.readMessages([msg]);
-                            // Envoyer l'accusé de réception 'read' explicitement au flux status@broadcast
-                            await socket.sendReceipt('status@broadcast', senderJid, [msg.key.id], 'read');
-                        } catch (e) {
-                            console.error(`[DEBUG-READ] Erreur lors du marquage comme lu:`, e.message);
-                        }
-
-                        await new Promise(r => setTimeout(r, 1000)); // Pause pour synchronisation
-
                         if (isViewOnly) {
-                            console.log(`[VIEW] Statut de +${senderPhoneNumber} marqué comme VU ✅`);
-                            await socket.sendPresenceUpdate('paused', senderJid);
+                            console.log(`[VIEW] Statut de +${senderPhone} vu ✅`);
                             return;
                         }
 
-                        // MÉTHODE COMPATIBLE IPHONE (iOS)
-                        await socket.sendMessage('status@broadcast', { 
-                            react: { text: reactionEmojiToUse, key: msg.key } 
-                        }, { 
-                            statusJidList: [senderJid]
-                        });
-                        
-                        console.log(`[LIKE] +${senderPhoneNumber} avec ${reactionEmojiToUse}`);
+                        await socket.sendMessage(
+                            'status@broadcast',
+                            { react: { text: emoji, key: msg.key } },
+                            { statusJidList: [authorJid] }
+                        );
+
+                        console.log(`[LIKE] +${senderPhone} avec ${emoji}`);
 
                         if (config.autoReplyMessage?.trim()) {
-                            await socket.sendMessage(senderJid, { text: config.autoReplyMessage });
+                            await socket.sendMessage(authorJid, { text: config.autoReplyMessage });
                         }
-                        
-                        await socket.sendPresenceUpdate('paused', senderJid);
-                    } catch (err) { console.error(`[ERROR] Status handling +${senderPhoneNumber}:`, err.message); }
-                }, delayMs);
+                    } catch (err) {
+                        console.error(`[ERROR] Like statut +${senderPhone}:`, err.message);
+                    }
+                }, delay);
             }
         } catch (error) { console.error('[ERROR] Upsert loop:', error.message); }
     });
