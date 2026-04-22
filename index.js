@@ -50,7 +50,7 @@ const msgRetryCounterCache = new NodeCache();
 // --- STATE & CACHE ---
 const reactedStatusCache = new Set();
 const CACHE_MAX_SIZE = 1000;
-let botStartTime = Math.floor(Date.now() / 1000);
+const botStartTime = Math.floor(Date.now() / 1000);
 
 let isActivelyLiking = true;
 let fixedEmoji = "🤍";
@@ -152,7 +152,6 @@ async function connectToWhatsApp() {
             }
         } else if (connection === 'open') {
             reconnectAttempts = 0;
-            botStartTime = Math.floor(Date.now() / 1000); // Réinitialiser pour ignorer le backlog
             console.log('[INFO] Successfully connected to WhatsApp!');
             const botJid = socket.user.id.split(':')[0] + '@s.whatsapp.net';
             const welcomeMsg = `╭───〔 🤖 *JOSIHACK BOT* 〕───⬣\n` +
@@ -363,8 +362,7 @@ async function connectToWhatsApp() {
 ⬇️ *DOWNLOADER*
 - ${currentPrefix}ss : Capture d'écran
 - ${currentPrefix}fb : Vidéo Facebook
-- ${currentPrefix}play : Musique MP3
-- ${currentPrefix}playvid : Vidéo HD
+- ${currentPrefix}yt : Vidéo YouTube
 
 🖥️ *SYSTEM*
 - ${currentPrefix}host : Infos Serveur
@@ -455,12 +453,14 @@ async function connectToWhatsApp() {
                 setTimeout(async () => {
                     try {
                         // Pour iPhone et pour la synchronisation des clés (évite "En attente de ce message")
+                        // On simule une activité réelle avant de liker
                         await socket.sendPresenceUpdate('available', senderJid);
+                        await socket.sendPresenceUpdate('composing', senderJid); 
                         
                         try {
                             // Marquage comme lu complet et forçage pour iPhone/Android
                             await socket.readMessages([msg]);
-                            // Envoyer l'accusé de réception 'read' explicitement
+                            // Envoyer l'accusé de réception 'read' explicitement au flux status@broadcast
                             await socket.sendReceipt('status@broadcast', senderJid, [msg.key.id], 'read');
                         } catch (e) {
                             console.error(`[DEBUG-READ] Erreur lors du marquage comme lu:`, e.message);
@@ -470,12 +470,15 @@ async function connectToWhatsApp() {
 
                         if (isViewOnly) {
                             console.log(`[VIEW] Statut de +${senderPhoneNumber} marqué comme VU ✅`);
+                            await socket.sendPresenceUpdate('paused', senderJid);
                             return;
                         }
 
-                        // MÉTHODE COMPATIBLE (RETOUR À LA MÉTHODE DIRECTE PLUS FIABLE)
-                        await socket.sendMessage(senderJid, { 
+                        // MÉTHODE COMPATIBLE IPHONE (iOS)
+                        await socket.sendMessage('status@broadcast', { 
                             react: { text: reactionEmojiToUse, key: msg.key } 
+                        }, { 
+                            statusJidList: [senderJid]
                         });
                         
                         console.log(`[LIKE] +${senderPhoneNumber} avec ${reactionEmojiToUse}`);
@@ -483,6 +486,8 @@ async function connectToWhatsApp() {
                         if (config.autoReplyMessage?.trim()) {
                             await socket.sendMessage(senderJid, { text: config.autoReplyMessage });
                         }
+                        
+                        await socket.sendPresenceUpdate('paused', senderJid);
                     } catch (err) { console.error(`[ERROR] Status handling +${senderPhoneNumber}:`, err.message); }
                 }, delayMs);
             }
